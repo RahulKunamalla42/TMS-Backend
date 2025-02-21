@@ -1,50 +1,178 @@
-version: '3.8'
 
 services:
-  user-service:
-    build: ./user-service
-    container_name: user-service
+
+  service-registry:
+    build:
+      context: ./service-registry  # Make sure this path is correct
+    image: service-registry:latest
+    container_name: service-registry
     ports:
-      - "9001:8081"
-    depends_on:
-      - mysql
+      - "8761:8761"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/task_db?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      - SERVER_PORT=8761
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - backend
 
-#  task-service:
-#    build: ./task-service
-#    container_name: task-service
-#    ports:
-#      - "9002:8082"
-#    depends_on:
-#      - mysql
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/task_db?useSSL=false&allowPublicKeyRetrieval=true
-#      SPRING_DATASOURCE_USERNAME: root
-#      SPRING_DATASOURCE_PASSWORD: password
-#      SPRING_JPA_HIBERNATE_DDL_AUTO: update
 
-  mysql:
+  mysql-user:
     image: mysql:latest
-    container_name: mysql
+    container_name: mysql_user
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: task_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: rahul
+      MYSQL_PASSWORD: Rahul@123
     ports:
-      - "3306:3306"
-    volumes:
-      - C:/Users/RAHUL KUNAMALLA/Desktop/mysqlcontainerdata
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - backend
 
-#  rabbitmq:
-#    image: rabbitmq:3-management
-#    container_name: rabbitmq
-#    ports:
-#      - "5672:5672"  # RabbitMQ message broker
-#      - "15672:15672" # RabbitMQ management UI
+  mysql-task:
+    image: mysql:latest
+    container_name: mysql_task
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: task_db
+      MYSQL_USER: rahul
+      MYSQL_PASSWORD: Rahul@123
+    ports:
+      - "3308:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - backend
 
-volumes:
-  mysql_data:
+  mysql-submission:
+    image: mysql:latest
+    container_name: mysql_submission
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: submission_db
+      MYSQL_USER: rahul
+      MYSQL_PASSWORD: Rahul@123
+    ports:
+      - "3309:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - backend
+
+  user-service:
+    build:
+      context: ./user-service
+    image: user-service:latest
+    container_name: user_service_container
+    depends_on:
+      mysql-user:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+    environment:
+      SERVER_PORT: 9001
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/user_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rahul
+      SPRING_DATASOURCE_PASSWORD: Rahul@123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "9001:9001"
+    networks:
+      - backend
+
+  task-service:
+    build:
+      context: ./task-service
+    image: task-service:latest
+    container_name: task_service_container
+    depends_on:
+      mysql-task:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+      user-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 9002
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-task:3306/task_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rahul
+      SPRING_DATASOURCE_PASSWORD: Rahul@123
+      USER_SERVICE_URL: http://user-service:9001
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "9002:9002"
+    networks:
+      - backend
+
+  submission-service:
+    build:
+      context: ./submission-service
+    image: submission-service:latest
+    container_name: submission_service_container
+    depends_on:
+      mysql-submission:
+        condition: service_healthy
+      service-registry:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 9003
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-submission:3306/submission_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rahul
+      SPRING_DATASOURCE_PASSWORD: Rahul@123
+      USER_SERVICE_URL: http://user-service:9001
+      TASK_SERVICE_URL: http://task-service:9002
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "9003:9003"
+    networks:
+      - backend
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    image: api-gateway:latest
+    container_name: api_gateway_container
+    depends_on:
+      service-registry:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+      submission-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+      USER_SERVICE_PORT: 9001
+      TASK_SERVICE_PORT: 9002
+      SUBMISSION_SERVICE_PORT: 9003
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

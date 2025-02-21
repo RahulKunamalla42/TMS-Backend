@@ -4,7 +4,7 @@ services:
     container_name: mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: task_db
+      MYSQL_DATABASE: user_db
       MYSQL_USER: rahul
       MYSQL_PASSWORD: Rahul@123
     ports:
@@ -25,7 +25,7 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: docker  # Fixed syntax here
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/task_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/user_db?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: rahul
       SPRING_DATASOURCE_PASSWORD: Rahul@123
     ports:

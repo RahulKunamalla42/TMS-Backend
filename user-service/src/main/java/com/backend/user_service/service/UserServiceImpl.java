@@ -55,7 +55,8 @@ public class UserServiceImpl implements IUserService{
 
     @Override
     public User getUserById(Long id) {
-        return null;
+        return userRepo.findById(id)
+                .orElseThrow(()->new RuntimeException("not found"));
     }
 
     @Override
