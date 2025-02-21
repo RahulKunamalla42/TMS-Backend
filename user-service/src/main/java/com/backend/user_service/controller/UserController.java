@@ -39,6 +39,12 @@ public class UserController {
         return ResponseEntity.ok(userService.LoginUser(loginRequest));
     }
 
+    @GetMapping("/getuserbyid/{id}")
+    public User getUserById(@PathVariable Long id){
+        return userService.getUserById(id);
+    }
+
+
     @GetMapping("/getuser")
     public ResponseEntity<Response> getUser(@RequestHeader String token){
        Response res=new Response();

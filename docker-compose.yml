@@ -1,50 +1,71 @@
-version: '3.8'
 
 services:
-  user-service:
-    build: ./user-service
-    container_name: user-service
-    ports:
-      - "9001:8081"
-    depends_on:
-      - mysql
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/task_db?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-
-#  task-service:
-#    build: ./task-service
-#    container_name: task-service
-#    ports:
-#      - "9002:8082"
-#    depends_on:
-#      - mysql
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/task_db?useSSL=false&allowPublicKeyRetrieval=true
-#      SPRING_DATASOURCE_USERNAME: root
-#      SPRING_DATASOURCE_PASSWORD: password
-#      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-
-  mysql:
+  mysql-user:
     image: mysql:latest
-    container_name: mysql
+    container_name: mysql_user
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: task_db
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: user_db
+      MYSQL_USER: rahul
+      MYSQL_PASSWORD: Rahul@123
     ports:
-      - "3306:3306"
-    volumes:
-      - C:/Users/RAHUL KUNAMALLA/Desktop/mysqlcontainerdata
+      - "3307:3306"  # Separate port for user-service
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-#  rabbitmq:
-#    image: rabbitmq:3-management
-#    container_name: rabbitmq
-#    ports:
-#      - "5672:5672"  # RabbitMQ message broker
-#      - "15672:15672" # RabbitMQ management UI
+  mysql-task:
+    image: mysql:latest
+    container_name: mysql_task
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: task_db
+      MYSQL_USER: rahul
+      MYSQL_PASSWORD: Rahul@123
+    ports:
+      - "3308:3306"  # Separate port for task-service
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-volumes:
-  mysql_data:
+  user-service:
+    build:
+      context: ./user-service
+    image: user-service:latest
+    container_name: user_service_container
+    depends_on:
+      mysql-user:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 9001
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/user_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rahul
+      SPRING_DATASOURCE_PASSWORD: Rahul@123
+    ports:
+      - "9001:9001"
+
+  task-service:
+    build:
+      context: ./task-service
+    image: task-service:latest
+    container_name: task_service_container
+    depends_on:
+      mysql-task:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 9002
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-task:3306/task_db?allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: rahul
+      SPRING_DATASOURCE_PASSWORD: Rahul@123
+    ports:
+      - "9002:9002"
