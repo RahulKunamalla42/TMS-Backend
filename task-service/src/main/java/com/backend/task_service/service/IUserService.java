@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@FeignClient(name = "user-service",url = "http://localhost:9001")
+@FeignClient(name = "user-service",url = "http://user-service:9001")
 public interface IUserService {
     @GetMapping("/getuser")
     UserDTO getUser(@RequestHeader String token);
