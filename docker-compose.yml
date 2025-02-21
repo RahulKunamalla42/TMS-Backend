@@ -1,5 +1,20 @@
 
 services:
+
+  service-registry:
+    build:
+      context: ./service-registry  # Make sure this path is correct
+    image: service-registry:latest
+    container_name: service-registry
+    ports:
+      - "8761:8761"
+    environment:
+      - SERVER_PORT=8761
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - backend
+
+
   mysql-user:
     image: mysql:latest
     container_name: mysql_user
@@ -10,12 +25,14 @@ services:
       MYSQL_USER: rahul
       MYSQL_PASSWORD: Rahul@123
     ports:
-      - "3307:3306"  # Separate port for user-service
+      - "3307:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - backend
 
   mysql-task:
     image: mysql:latest
@@ -27,12 +44,14 @@ services:
       MYSQL_USER: rahul
       MYSQL_PASSWORD: Rahul@123
     ports:
-      - "3308:3306"  # Separate port for task-service
+      - "3308:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - backend
 
   mysql-submission:
     image: mysql:latest
@@ -44,12 +63,14 @@ services:
       MYSQL_USER: rahul
       MYSQL_PASSWORD: Rahul@123
     ports:
-      - "3309:3306"  # Separate port for task-service
+      - "3309:3306"
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - backend
 
   user-service:
     build:
@@ -59,14 +80,19 @@ services:
     depends_on:
       mysql-user:
         condition: service_healthy
+      service-registry:
+        condition: service_started
     environment:
       SERVER_PORT: 9001
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-user:3306/user_db?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: rahul
       SPRING_DATASOURCE_PASSWORD: Rahul@123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
     ports:
       - "9001:9001"
+    networks:
+      - backend
 
   task-service:
     build:
@@ -76,6 +102,8 @@ services:
     depends_on:
       mysql-task:
         condition: service_healthy
+      service-registry:
+        condition: service_started
       user-service:
         condition: service_started
     environment:
@@ -85,8 +113,11 @@ services:
       SPRING_DATASOURCE_USERNAME: rahul
       SPRING_DATASOURCE_PASSWORD: Rahul@123
       USER_SERVICE_URL: http://user-service:9001
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
     ports:
       - "9002:9002"
+    networks:
+      - backend
 
   submission-service:
     build:
@@ -96,6 +127,8 @@ services:
     depends_on:
       mysql-submission:
         condition: service_healthy
+      service-registry:
+        condition: service_started
       user-service:
         condition: service_started
       task-service:
@@ -108,5 +141,38 @@ services:
       SPRING_DATASOURCE_PASSWORD: Rahul@123
       USER_SERVICE_URL: http://user-service:9001
       TASK_SERVICE_URL: http://task-service:9002
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
     ports:
       - "9003:9003"
+    networks:
+      - backend
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    image: api-gateway:latest
+    container_name: api_gateway_container
+    depends_on:
+      service-registry:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+      submission-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+      USER_SERVICE_PORT: 9001
+      TASK_SERVICE_PORT: 9002
+      SUBMISSION_SERVICE_PORT: 9003
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge

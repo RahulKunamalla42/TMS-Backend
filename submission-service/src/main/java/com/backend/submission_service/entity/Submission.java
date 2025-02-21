@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
 @Entity
 public class Submission {
     @Id
