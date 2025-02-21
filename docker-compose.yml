@@ -146,29 +146,32 @@ services:
       - "9003:9003"
     networks:
       - backend
-#
-#  api-gateway:
-#    build:
-#      context: ./api-gateway
-#    image: api-gateway:latest
-#    container_name: api_gateway_container
-#    depends_on:
-#      eureka-server:
-#        condition: service_started
-#      user-service:
-#        condition: service_started
-#      task-service:
-#        condition: service_started
-#      submission-service:
-#        condition: service_started
-#    environment:
-#      SERVER_PORT: 8080
-#      SPRING_PROFILES_ACTIVE: docker
-#      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
-#    ports:
-#      - "8080:8080"
-#    networks:
-#      - backend
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    image: api-gateway:latest
+    container_name: api_gateway_container
+    depends_on:
+      service-registry:
+        condition: service_started
+      user-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+      submission-service:
+        condition: service_started
+    environment:
+      SERVER_PORT: 8080
+      SPRING_PROFILES_ACTIVE: docker
+      USER_SERVICE_PORT: 9001
+      TASK_SERVICE_PORT: 9002
+      SUBMISSION_SERVICE_PORT: 9003
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://service-registry:8761/eureka
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
 
 networks:
   backend:
