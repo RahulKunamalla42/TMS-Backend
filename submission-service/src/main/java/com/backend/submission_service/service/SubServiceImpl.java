@@ -24,8 +24,8 @@ public class SubServiceImpl implements SubService {
         this.modelMapper = modelMapper;
     }
 
-    public SubDto submitTask(Long userid, Long taskid, String githublink) throws MyException {
-        ResponseEntity<?> task = taskService.getTaskById(taskid);
+    public SubDto submitTask(Long userid, Long taskid, String githublink,String jwt) throws MyException {
+        ResponseEntity<?> task = taskService.getTaskById(taskid,jwt);
         if(task!=null){
             Submission sub=new Submission();
             sub.setGithublink(githublink);
@@ -57,6 +57,12 @@ public class SubServiceImpl implements SubService {
     @Override
     public List<SubDto> getSubmissionsByTaskId(Long taskid) {
         List<Submission> list = subRepo.findByTaskId(taskid);
+        List<SubDto> all = list.stream().map(sub -> modelMapper.SubmissionToSubDto(sub)).toList();
+        return all;
+    }
+    @Override
+    public List<SubDto> getSubmissionsByUserId(Long userid) {
+        List<Submission> list = subRepo.findByUserId(userid);
         List<SubDto> all = list.stream().map(sub -> modelMapper.SubmissionToSubDto(sub)).toList();
         return all;
     }

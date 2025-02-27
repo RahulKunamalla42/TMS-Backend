@@ -7,11 +7,16 @@ import com.backend.task_service.exception.MyException;
 import com.backend.task_service.payload.Status;
 import com.backend.task_service.repo.TaskRepo;
 import com.backend.task_service.util.ModelMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Slf4j
 public class TaskServiceImpl implements ITaskService{
 
     private final TaskRepo taskRepo;
@@ -25,11 +30,19 @@ public class TaskServiceImpl implements ITaskService{
     }
 
     @Override
-    public TaskDTO createTask(Task task, String jwt) throws MyException {
+    public boolean isAdmin(String jwt) throws MyException {
         UserDTO user = userService.getUser(jwt);
-        if (!user.getRole().name().equals("ADMIN")) {
-            throw new MyException("ADMIN ONLY CREATE TASKS");
+        log.info("{}",user);
+        return user.getRole().name().equals("ADMIN");
+    }
+
+    @Override
+    public TaskDTO createTask(Task task, String jwt) throws MyException {
+        if(! isAdmin(jwt)){
+            throw new MyException("Admins Only Create tasks");
         }
+        task.setCreatedAt(LocalDateTime.now());
+        task.setStatus(Status.PENDING);
         return modelMapper.taskToTaskDto(taskRepo.save(task));
     }
 
@@ -78,37 +91,47 @@ public class TaskServiceImpl implements ITaskService{
     }
 
     @Override
-    public void deleteTask(Long taskid) throws MyException {
+    public void deleteTask(Long taskid,String jwt) throws MyException {
         if (!taskRepo.existsById(taskid)) {
             throw new MyException("Task not found");
         }
-        taskRepo.deleteById(taskid);
+        if(isAdmin(jwt)){
+            taskRepo.deleteById(taskid);
+        }else{
+            throw new MyException("admins only delete the task");
+        }
     }
 
     @Override
-    public TaskDTO asigningToUser(Long userid, Long taskid) throws MyException {
+    public TaskDTO asigningToUser(Long userid, Long taskid,String token) throws MyException {
         Task task = taskRepo.findById(taskid)
                 .orElseThrow(() -> new MyException("Task not found with ID: " + taskid));
+        if(isAdmin(token)){
+            UserDTO userDTO = userService.getUserById(userid,token);
 
-        UserDTO userDTO = userService.getUserById(userid);
+            if (userDTO == null) {
+                throw new MyException("User not found with ID: " + userid);
+            }
+            task.setAsignedUserId(userid);
 
-        if (userDTO == null) {
-            throw new MyException("User not found with ID: " + userid);
+            Task updatedTask = taskRepo.save(task);
+
+            return modelMapper.taskToTaskDto(updatedTask);
+        }else{
+            throw new MyException("admins only assign tasks");
         }
-        task.setAsignedUserId(userid);
-
-        Task updatedTask = taskRepo.save(task);
-
-        return modelMapper.taskToTaskDto(updatedTask);
     }
 
     @Override
     public List<TaskDTO> getAllTasksByUserId(Long userid, Status status) throws MyException {
-        List<Task> found = taskRepo.findByAsignedUserId(userid).get();
-        if (found.isEmpty()) {
-            throw new MyException("No tasks found for user ID: " + userid);
+        Optional<List<Task>> optionalTasks = taskRepo.findByAsignedUserId(userid);
+
+        if (optionalTasks.isEmpty() || optionalTasks.get().isEmpty()) {
+            System.out.println("⚠️ No tasks found for user ID: " + userid);
+            return Collections.emptyList(); // ✅ Return an empty list instead of throwing an error
         }
-        return found.stream()
+
+        return optionalTasks.get().stream()
                 .filter(task -> status == null || task.getStatus().name().equalsIgnoreCase(status.name()))
                 .map(modelMapper::taskToTaskDto)
                 .toList();

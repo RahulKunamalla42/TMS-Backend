@@ -39,7 +39,7 @@ public class UserServiceImpl implements IUserService{
     }
 
     @Override
-    public List<UserDTO> getAllUsers() {
+    public List<UserDTO> getAllUsers() throws MyException{
         List<User> all = userRepo.findAll();
         List<UserDTO> collect = all.stream()
                 .map(user -> modelMapper.userToUserDto(user)).collect(Collectors.toList());
@@ -47,7 +47,8 @@ public class UserServiceImpl implements IUserService{
     }
     @Override
     public UserDTO getUser(String token) {
-        String username = jwtService.extractusername(token);
+        String username = jwtService.extractusername(token.replace("Bearer ", ""));
+        log.info("user name is: ",username);
         User user = userRepo.findByUserName(username)
                 .orElseThrow(() -> new UsernameNotFoundException("user not found using token"));
         return modelMapper.userToUserDto(user);
@@ -88,6 +89,25 @@ public class UserServiceImpl implements IUserService{
             return modelMapper.userToUserDto(userRepo.save(user));
         }else{
             throw new MyException("registration failed ");
+        }
+    }
+
+    @Override
+    public boolean isExistUser(String username) {
+        return userRepo.existsByUserName(username);
+    }
+
+    @Override
+    public UserDTO addAdmin() {
+        if(isExistUser("sonu")){
+            return null;
+        }else {
+            User admin=new User();
+            admin.setUserName("sonu");
+            admin.setPassword(passwordEncoder.encode("sonu"));
+            admin.setRole(Role.ADMIN);
+            userRepo.save(admin);
+            return modelMapper.userToUserDto(admin);
         }
     }
 

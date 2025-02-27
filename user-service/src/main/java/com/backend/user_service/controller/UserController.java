@@ -1,18 +1,22 @@
 package com.backend.user_service.controller;
 
 
+import com.backend.user_service.dto.UserDTO;
 import com.backend.user_service.entity.User;
 import com.backend.user_service.exception.MyException;
 import com.backend.user_service.payloads.LoginRequest;
 import com.backend.user_service.payloads.Response;
 import com.backend.user_service.service.IUserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
 @RestController
 @RequestMapping("/user")
+@Slf4j
 public class UserController {
 
     private final IUserService userService;
@@ -23,6 +27,7 @@ public class UserController {
 
     @GetMapping("/home")
     public ResponseEntity<Response> home(){
+        log.info("hello");
         return ResponseEntity.ok(new Response("Hello"));
     }
 
@@ -39,23 +44,31 @@ public class UserController {
         return ResponseEntity.ok(userService.LoginUser(loginRequest));
     }
 
-    @GetMapping("/getuserbyid/{id}")
-    public User getUserById(@PathVariable Long id){
-        return userService.getUserById(id);
+    @GetMapping("/getprofilebyid/{id}")
+    public ResponseEntity<?> getUserById(@PathVariable Long id, @RequestHeader("Authorization") String token) {
+        User user = userService.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
 
-    @GetMapping("/getuser")
-    public ResponseEntity<Response> getUser(@RequestHeader String token){
+    @GetMapping("/getprofile")
+    public ResponseEntity<?> getUser(@RequestHeader("Authorization") String token){
        Response res=new Response();
         System.out.println(token);
-       res.setUser(userService.getUser(token));
-        return ResponseEntity.ok(res);
+        UserDTO user = userService.getUser(token);
+        log.info("{}",user);
+        return ResponseEntity.ok(user);
     }
-    @GetMapping("/getallusers")
-    public ResponseEntity<Response> getAllUsers(){
-        Response res=new Response();
-        res.setUsers(userService.getAllUsers());
-        return ResponseEntity.ok(res);
+
+    @PostMapping("/addadmin")
+    public ResponseEntity<?> addAdmin(){
+        return ResponseEntity.ok(userService.addAdmin());
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/getallprofiles")
+    public ResponseEntity<?> getAllUsers() throws MyException {
+        return ResponseEntity.ok(userService.getAllUsers());
+    }
+
 }

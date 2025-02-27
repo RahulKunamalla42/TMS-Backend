@@ -11,7 +11,10 @@ import java.util.List;
 public interface IUserService {
     UserDTO getUser(String token);
     User getUserById(Long id);
-    List<UserDTO> getAllUsers();
+    List<UserDTO> getAllUsers() throws MyException;
     Response LoginUser(LoginRequest loginRequest) throws MyException;
     UserDTO RegisterUser(User user) throws MyException;
+
+    boolean isExistUser(String username);
+    UserDTO addAdmin();
 }

@@ -28,39 +28,11 @@ public class TaskController {
     }
 
     @GetMapping("/gettask/{id}")
-    public ResponseEntity<?> getTaskById(@PathVariable Long id) throws Exception {
+    public ResponseEntity<?> getTaskById(@PathVariable Long id,@RequestHeader("Authorization") String jwt) throws Exception {
         TaskDTO taskDTO = taskService.getTaskById(id);
         return taskDTO==null?
                 new ResponseEntity<>(new Response("task not found"), HttpStatus.NOT_FOUND):
                 new ResponseEntity<>(taskDTO,HttpStatus.OK);
-    }
-    @PostMapping("/create")
-    public  ResponseEntity<?> createTask(@RequestBody Task task,
-                                         @RequestHeader("Authorization") String token) throws Exception {
-        TaskDTO task1 = taskService.createTask(task, token);
-        return new ResponseEntity<>(task1,HttpStatus.CREATED);
-    }
-    @GetMapping("/getall")
-    public ResponseEntity<?> getAllTasks(@RequestParam(required = false) Status status){
-        List<TaskDTO> allTasks = taskService.getAllTasks(status);
-        return new ResponseEntity<>(allTasks,HttpStatus.OK);
-    }
-    @DeleteMapping("/deletetask")
-    public ResponseEntity<?> deleteTask(@RequestParam Long id) throws Exception {
-        taskService.deleteTask(id);
-        return new ResponseEntity<>(new Response("task deleted"+id),HttpStatus.OK);
-    }
-
-    @PutMapping("/updatetask")
-    public ResponseEntity<?> updateTask(@RequestBody Task task,
-                                        @RequestParam(required = false) Long userid,
-                                        @RequestParam Long taskid) throws Exception {
-        return new ResponseEntity<>(taskService.updateTask(taskid,userid,task),HttpStatus.OK);
-    }
-    @PutMapping("/asigntouser")
-    public ResponseEntity<?> asigntouser(@RequestParam Long userid,
-                                         @RequestParam Long taskid) throws Exception {
-        return new ResponseEntity<>(taskService.asigningToUser(userid,taskid),HttpStatus.OK);
     }
 
     @PutMapping("/completetask")
@@ -69,8 +41,21 @@ public class TaskController {
     }
 
     @GetMapping("/tasksasigndtouser")
-    public ResponseEntity<?> getAllTasksByUserId(@RequestParam Long userid,@RequestParam(required = false) Status status) throws MyException {
-        return new ResponseEntity<>(taskService.getAllTasksByUserId(userid,status),HttpStatus.OK);
+    public ResponseEntity<?> getAllTasksByUserId(
+            @RequestParam Long userid,
+            @RequestParam(required = false) Status status
+    ) throws MyException {
+        System.out.println("Received Request: userid=" + userid + ", status=" + status);
+
+        try {
+            return new ResponseEntity<>(taskService.getAllTasksByUserId(userid, status), HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace(); // 🔍 Log the error in the console
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Error: " + e.getMessage());
+        }
     }
+
+
+
 
 }

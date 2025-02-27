@@ -21,8 +21,10 @@ public class SubController{
     @PostMapping("/submit")
     public ResponseEntity<?> submitTask(@RequestParam Long userid,
                                         @RequestParam Long taskid,
-                                        @RequestParam String githublink) throws Exception {
-        return new ResponseEntity<>( submissonService.submitTask(userid,taskid,githublink), HttpStatus.OK);
+                                        @RequestParam String githublink,
+                                        @RequestHeader("Authorization") String jwt
+    ) throws Exception {
+        return new ResponseEntity<>( submissonService.submitTask(userid,taskid,githublink,jwt), HttpStatus.OK);
     }
 
     @GetMapping("/getSub")
@@ -38,5 +40,9 @@ public class SubController{
     @GetMapping("/getsubsbytaskid")
     public ResponseEntity<?> getSubmissionsByTaskId(@RequestParam Long taskid)throws Exception{
         return new ResponseEntity<>(submissonService.getSubmissionsByTaskId(taskid),HttpStatus.OK);
+    }
+    @GetMapping("/getsubsbyuserid")
+    public ResponseEntity<?> getSubmissionsByUserId(@RequestParam Long userid)throws Exception{
+        return new ResponseEntity<>(submissonService.getSubmissionsByUserId(userid),HttpStatus.OK);
     }
 }
