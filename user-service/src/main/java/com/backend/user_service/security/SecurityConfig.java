@@ -39,10 +39,12 @@ public class SecurityConfig {
                     auth.requestMatchers("/user/home/**"
                             ,"/user/register/**",
                             "/user/login/**",
+                            "/user/addadmin/**",
                             "/task/public/**",
                             "/submit/public/**"
                     ).permitAll();
                     auth.requestMatchers("/user/**").authenticated();
+                    auth.requestMatchers("/task/admin/**").hasRole("ADMIN");
                     auth.requestMatchers("/task/**").authenticated();
                     auth.requestMatchers("/submit/**").authenticated();
                     auth.anyRequest().authenticated();
